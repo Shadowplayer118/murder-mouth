@@ -1,0 +1,66 @@
+[
+  {
+    "id": 1,
+    "name": "Ares Smith",
+    "title": "The Chosen One",
+    "stats": {
+      "Int": 20,
+      "Per": 20,
+      "Def": 10,
+      "Spd": 10,
+      "Dmg": 30
+    },
+    "lore": "The guy who pulled out the sword from the stone.",
+    "portrait": "aressmith_por.png",
+    "icon": "aressmith_ico.png",
+    "ability": "Unbreakable Will"
+  },
+  {
+    "id": 2,
+    "name": "Lyra Dawn",
+    "title": "The Shadow Seeker",
+    "stats": {
+      "Int": 15,
+      "Per": 25,
+      "Def": 8,
+      "Spd": 20,
+      "Dmg": 18
+    },
+    "lore": "A rogue who thrives in darkness, unseen and unstoppable.",
+    "portrait": "lyradawn_por.png",
+    "icon": "lyradawn_ico.png",
+    "ability": "Silent Strike"
+  },
+  {
+    "id": 3,
+    "name": "Thorin Oakshield",
+    "title": "The Iron Defender",
+    "stats": {
+      "Int": 10,
+      "Per": 12,
+      "Def": 30,
+      "Spd": 8,
+      "Dmg": 12
+    },
+    "lore": "A stoic warrior whose shield can withstand any blow.",
+    "portrait": "thorin_por.png",
+    "icon": "thorin_ico.png",
+    "ability": "Unyielding Guard"
+  },
+  {
+    "id": 4,
+    "name": "Selene Moonfire",
+    "title": "The Arcane Sage",
+    "stats": {
+      "Int": 28,
+      "Per": 18,
+      "Def": 6,
+      "Spd": 12,
+      "Dmg": 25
+    },
+    "lore": "A mystical mage who channels the power of the moon.",
+    "portrait": "selene_por.png",
+    "icon": "selene_ico.png",
+    "ability": "Lunar Blast"
+  }
+]
