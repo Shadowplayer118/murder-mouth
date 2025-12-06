@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,8 +25,31 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} bg-gray-900 text-white min-h-screen`}>
+        {/* Header */}
+        <header className="bg-gray-800/80 backdrop-blur-md p-4 shadow-md flex justify-center gap-6">
+          <Link
+            href="/main_menu"
+            className="hover:text-yellow-400 font-semibold transition-colors"
+          >
+            🏠 Main Menu
+          </Link>
+          <Link
+            href="/characters"
+            className="hover:text-blue-400 font-semibold transition-colors"
+          >
+            🧙 Characters
+          </Link>
+          <Link
+            href="/arena"
+            className="hover:text-red-400 font-semibold transition-colors"
+          >
+            ⚔️ Arena
+          </Link>
+        </header>
+
+        {/* Page Content */}
+        <main className="p-4">{children}</main>
       </body>
     </html>
   );

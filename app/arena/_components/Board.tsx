@@ -232,94 +232,120 @@ const handleDowned = (
   };
 
 return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 p-2 sm:p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Fighting Game Layout: Players Face Each Other */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-          
-          {/* Player 1 - Left Side */}
-          <div className="bg-gradient-to-br from-blue-900/40 to-blue-950/40 backdrop-blur-sm rounded-lg border-2 border-blue-500/30 p-4 shadow-lg shadow-blue-500/20">
-            <div className="text-blue-400 font-bold text-lg mb-3 text-center lg:text-left">PLAYER 1</div>
-            <CharacterSelector
-              characters={characters}
-              selectedId={selectedId1}
-              onSelect={(id) => handleSelect(id, setName1, setTitle1, setStats1, setIcon1, setPortrait1, setSelectedId1)}
-            />
-            <CharacterInfo
-              name={name1}
-              setName={setName1}
-              title={title1}
-              setTitle={setTitle1}
-              health={stats1[0].value}
-              setHealth={(val) => handleStatChange(0, val, setStats1, stats1)}
-              portrait={portrait1}
-              icon={icon1}
-            />
-            <StatsTable stats={stats1} onChange={(idx, val) => handleStatChange(idx, val, setStats1, stats1)} />
-            <div className="mt-3 text-center text-blue-300 font-semibold bg-blue-950/50 rounded py-2">
-              ❤️ Lifelines: {lifelines1}
-            </div>
-          </div>
+  <div className="min-h-screen bg-black text-[#00ff99] font-mono p-3">
 
-          {/* Center - VS, Battle Log & Action Buttons */}
-          <div className="flex flex-col items-center gap-4 order-first lg:order-none">
-            <div className="text-6xl sm:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-yellow-500 to-red-500 animate-pulse">
-              VS
-            </div>
-            
-            {/* Battle Log - Centered */}
-            <div className="w-full">
-              <BattleLog log={log} />
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-3 w-full max-w-xs">
-              <button 
-                onClick={battle} 
-                disabled={downedQueue.length > 0}
-                className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 px-8 rounded-lg text-xl shadow-lg transform transition hover:scale-105 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
-              >
-                ⚔️ BATTLE
-              </button>
-              
-              {downedQueue.length > 0 && (
-                <button 
-                  onClick={handleDownedClick}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition hover:scale-105 active:scale-95 animate-bounce"
-                >
-                  🎲 Roll for Recovery
-                </button>
-              )}
-            </div>
-          </div>
+    {/* 3 Grid Columns — A | B | LOG */}
+    <div className="max-w-7xl mx-auto grid grid-cols-3 gap-2">
 
-          {/* Player 2 - Right Side */}
-          <div className="bg-gradient-to-br from-red-900/40 to-red-950/40 backdrop-blur-sm rounded-lg border-2 border-red-500/30 p-4 shadow-lg shadow-red-500/20">
-            <div className="text-red-400 font-bold text-lg mb-3 text-center lg:text-right">PLAYER 2</div>
-            <CharacterSelector
-              characters={characters}
-              selectedId={selectedId2}
-              onSelect={(id) => handleSelect(id, setName2, setTitle2, setStats2, setIcon2, setPortrait2, setSelectedId2)}
-            />
-            <CharacterInfo
-              name={name2}
-              setName={setName2}
-              title={title2}
-              setTitle={setTitle2}
-              health={stats2[0].value}
-              setHealth={(val) => handleStatChange(0, val, setStats2, stats2)}
-              portrait={portrait2}
-              icon={icon2}
-            />
-            <StatsTable stats={stats2} onChange={(idx, val) => handleStatChange(idx, val, setStats2, stats2)} />
-            <div className="mt-3 text-center text-red-300 font-semibold bg-red-950/50 rounded py-2">
-              ❤️ Lifelines: {lifelines2}
-            </div>
-          </div>
+      {/* ------------------------------------- */}
+      {/* SUBJECT A */}
+      {/* ------------------------------------- */}
+      <div className="border-2 border-[#00ff99] p-3">
+        <h2 className="text-center text-[#00ffb3] font-bold text-xl tracking-widest border-b pb-1">
+          SUBJECT-A
+        </h2>
+
+        <CharacterSelector
+          characters={characters}
+          selectedId={selectedId1}
+          onSelect={(id) =>
+            handleSelect(id, setName1, setTitle1, setStats1, setIcon1, setPortrait1, setSelectedId1)
+          }
+        />
+
+        <CharacterInfo
+          name={name1} setName={setName1}
+          title={title1} setTitle={setTitle1}
+          health={stats1[0].value}
+          setHealth={(v)=>handleStatChange(0,v,setStats1,stats1)}
+          portrait={portrait1} icon={icon1}
+        />
+
+        <StatsTable stats={stats1} onChange={(i,v)=>handleStatChange(i,v,setStats1,stats1)} />
+
+        <div className="mt-3 border border-[#00ff99] p-2 text-center tracking-wide">
+          LIFELINES: {lifelines1}
         </div>
       </div>
+
+      {/* ------------------------------------- */}
+      {/* SUBJECT B */}
+      {/* ------------------------------------- */}
+      <div className="border-2 border-[#00ff99] p-3">
+        <h2 className="text-center text-[#00ffb3] font-bold text-xl tracking-widest border-b pb-1">
+          SUBJECT-B
+        </h2>
+
+        <CharacterSelector
+          characters={characters}
+          selectedId={selectedId2}
+          onSelect={(id) =>
+            handleSelect(id, setName2, setTitle2, setStats2, setIcon2, setPortrait2, setSelectedId2)
+          }
+        />
+
+        <CharacterInfo
+          name={name2} setName={setName2}
+          title={title2} setTitle={setTitle2}
+          health={stats2[0].value}
+          setHealth={(v)=>handleStatChange(0,v,setStats2,stats2)}
+          portrait={portrait2} icon={icon2}
+        />
+
+        <StatsTable stats={stats2} onChange={(i,v)=>handleStatChange(i,v,setStats2,stats2)} />
+
+        <div className="mt-3 border border-[#00ff99] p-2 text-center tracking-wide">
+          LIFELINES: {lifelines2}
+        </div>
+      </div>
+
+      {/* ------------------------------------- */}
+      {/* LOG + BATTLE + RECOVERY */}
+      {/* ------------------------------------- */}
+      <div className="border-2 border-[#00ff99] p-3 flex flex-col">
+        
+        <h2 className="text-center border-b pb-1 font-bold tracking-widest">
+          SYSTEM LOG FEED
+        </h2>
+
+                  {/* BATTLE BUTTON */}
+          <button
+            onClick={battle}
+            disabled={downedQueue.length > 0}
+            className="uppercase border-2 border-[#00ff99] py-3 font-bold tracking-widest
+                       hover:bg-[#004d2e] active:scale-95 disabled:opacity-25"
+          >
+            Execute Combat Protocol
+          </button>
+
+          {/* RECOVERY if someone is down */}
+          {downedQueue.length > 0 && (
+            <button
+              onClick={handleDownedClick}
+              className="uppercase border-2 border-[#00ff99] py-2 font-bold tracking-widest animate-pulse
+                         hover:bg-[#003d24] active:scale-95"
+            >
+              Attempt Subject Recovery
+            </button>
+          )}
+
+        <div className="flex-1 h-[65vh] overflow-y-auto p-2 text-[#00ff95] text-sm leading-tight">
+          <BattleLog log={log} />
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3">
+
+
+        </div>
+
+      </div>
+
     </div>
-  );
+  </div>
+);
+
+
+
 };
 
 export default Board;

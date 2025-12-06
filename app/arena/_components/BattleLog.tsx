@@ -10,50 +10,45 @@ const BattleLog: React.FC<BattleLogProps> = ({ log }) => {
   const [isExpanded, setIsExpanded] = React.useState(true);
 
   return (
-    <div className="bg-gradient-to-br from-gray-900/90 to-gray-950/90 backdrop-blur-sm rounded-lg border-2 border-gray-700/50 overflow-hidden shadow-xl">
-      {/* Header - Always Visible */}
+    <div className="border-2 border-[#00ff99] bg-black text-[#00ff99] font-mono select-none">
+
+      {/* HEADER */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-gray-800/50 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 tracking-widest 
+                   border-b border-[#00ff99] hover:bg-[#002a1c] transition-all duration-200"
       >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">📜</span>
-          <h3 className="text-xl font-bold text-gray-200">Battle Log</h3>
-          <span className="bg-gray-700/50 text-gray-300 text-sm px-2 py-1 rounded-full">
-            {log.length} {log.length === 1 ? 'entry' : 'entries'}
-          </span>
-        </div>
-        <span className={`text-2xl transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+        <span className="uppercase font-bold">SYSTEM LOG FEED</span>
+
+        <span className={`text-xl transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}>
           ▼
         </span>
       </button>
 
-      {/* Collapsible Content */}
-      <div
-        className={`transition-all duration-300 ease-in-out ${
-          isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-        } overflow-hidden`}
-      >
-        <div className="border-t border-gray-700/50">
-          <div className="p-4 max-h-80 overflow-y-auto space-y-2">
-            {log.length === 0 ? (
-              <div className="text-gray-500 italic text-center py-8">
-                No actions yet. The battle awaits...
-              </div>
-            ) : (
-              [...log].reverse().map((entry, index) => (
-                <div
-                  key={index}
-                  className="bg-gray-800/40 border-l-4 border-yellow-500/50 p-3 rounded text-gray-300 hover:bg-gray-800/60 transition-colors"
-                >
-                  <span className="text-yellow-400/70 font-mono text-xs mr-2">
-                    #{log.length - index}
-                  </span>
-                  {entry}
-                </div>
-              ))
-            )}
-          </div>
+      {/* COLLAPSIBLE CONTENT */}
+      <div className={`transition-all duration-300 overflow-hidden 
+                       ${isExpanded ? "max-h-[60vh] opacity-100" : "max-h-0 opacity-0"}`}>
+
+        <div className="p-2 h-[60vh] overflow-y-auto leading-tight tracking-wide 
+                        scrollbar-thin scrollbar-thumb-[#00ff99] scrollbar-track-black">
+
+          {/* EMPTY STATE */}
+          {log.length === 0 && (
+            <div className="text-[#00ff99]/50 italic text-center mt-10">
+              Awaiting SCP engagement protocol..._
+              <span className="animate-pulse">█</span>
+            </div>
+          )}
+
+          {/* NEWEST FIRST — reversed feed */}
+          {[...log].reverse().map((entry, index) => (
+            <div key={index} className="border-b border-[#00ff99]/20 py-[3px]">
+              <span className="text-[#00ffb3] pr-2">
+                [#{log.length - index}]
+              </span>
+              {entry}
+            </div>
+          ))}
         </div>
       </div>
     </div>
