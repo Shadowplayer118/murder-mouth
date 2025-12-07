@@ -14,7 +14,7 @@ interface StatsTableProps {
 
 const StatsTable: React.FC<StatsTableProps> = ({ stats, onChange }) => {
 
-  const [isOpen, setIsOpen] = React.useState(true);
+  const [isOpen, setIsOpen] = React.useState(false);
 
   const getStatIcon = (label: string) => {
     const icons: Record<string, string> = {

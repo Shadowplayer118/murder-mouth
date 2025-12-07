@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+
 interface Character {
   name: string;
   title: string;
@@ -23,11 +24,32 @@ export default function CharactersPage() {
   const [selectedChar, setSelectedChar] = useState<Character | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    fetch("/data/characters.json")
-      .then(res => res.json())
-      .then(data => setCharacters(data));
-  }, []);
+useEffect(() => {
+  fetch('/data/characters.json')
+    .then((res) => res.json())
+    .then((data) => {
+      // Map JSON to Character type
+      const formatted: Character[] = data.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        title: c.title || '',
+        stats: {
+          Int: Number(c.Int || 0),
+          Per: Number(c.Per || 0),
+          Def: Number(c.Def || 0),
+          Spd: Number(c.Spd || 0),
+          Dmg: Number(c.Dmg || 0),
+        },
+        portrait: c.portrait || 'default.jpg',
+        icon: c.icon || 'default.jpg',
+        lore: c.lore || '',
+        ability: c.ability || '',
+      }));
+      setCharacters(formatted);
+    })
+    .catch((err) => console.error('Failed to load characters:', err));
+}, []);
+
 
   const filteredCharacters = characters.filter(char => 
     char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

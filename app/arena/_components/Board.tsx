@@ -5,6 +5,7 @@ import CharacterSelector from './CharacterSelector';
 import StatsTable, { Stat } from './StatsTable';
 import CharacterInfo from './CharacterInfo';
 import BattleLog from './BattleLog';
+import DocumentationModal from './Documentation';
 
 interface Character {
   id: number;
@@ -39,6 +40,8 @@ const Board = () => {
   const [icon1, setIcon1] = useState<string | null>(null);
   const [portrait1, setPortrait1] = useState<string | null>(null);
   const [lifelines1, setLifelines1] = useState(3);
+  const [docModalOpen, setDocModalOpen] = useState(false);
+
 
   // ------------------ Player 2 ------------------
   const [selectedId2, setSelectedId2] = useState(0);
@@ -56,14 +59,36 @@ const Board = () => {
   const [downedQueue, setDownedQueue] = useState<('p1' | 'p2')[]>([]);
 
   const [winner, setWinner] = useState<string | null>(null);
+  const canAttemptRecovery = lifelines1 > 0 && lifelines2 > 0;
 
 
-  useEffect(() => {
-    fetch('/data/characters.json')
-      .then((res) => res.json())
-      .then((data) => setCharacters(data))
-      .catch((err) => console.error('Failed to load characters:', err));
-  }, []);
+
+useEffect(() => {
+  fetch('/data/characters.json')
+    .then((res) => res.json())
+    .then((data) => {
+      // Map JSON to Character type
+      const formatted: Character[] = data.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        title: c.title || '',
+        stats: {
+          Int: Number(c.Int || 0),
+          Per: Number(c.Per || 0),
+          Def: Number(c.Def || 0),
+          Spd: Number(c.Spd || 0),
+          Dmg: Number(c.Dmg || 0),
+        },
+        portrait: c.portrait || 'default.png',
+        icon: c.icon || 'default.png',
+        lore: c.lore || '',
+        ability: c.ability || '',
+      }));
+      setCharacters(formatted);
+    })
+    .catch((err) => console.error('Failed to load characters:', err));
+}, []);
+
 
   const handleStatChange = (index: number, value: number, setStats: React.Dispatch<React.SetStateAction<Stat[]>>, stats: Stat[]) => {
     const newStats = [...stats];
@@ -120,8 +145,8 @@ const handleDowned = (
   playerStats: Stat[],
   lifelines: number,
   opponentHP: number
-): { revived: boolean; newHP: number; newLifelines: number } => {
-  const dice = rollDice();
+): { revived: boolean; newHP: number; newLifelines: number; roll: number } => {
+  const dice = rollDice(); // get the dice roll
   let newHP = playerStats[0].value;
   let newLifelines = lifelines;
   let revived = false;
@@ -131,17 +156,15 @@ const handleDowned = (
     revived = true;
     newHP = Math.max(1, opponentHP - 2);
     newLifelines = 3; // Reset lifelines after revival
-    setLog((l) => [...l, `${playerName} rolled ${dice} and is revived with ${newHP} HP! Lifelines reset to 3.`]);
   } else if (dice <= 5) {
     newLifelines -= 1;
-    setLog((l) => [...l, `${playerName} rolled ${dice} and loses 1 lifeline (remaining ${newLifelines})`]);
   } else {
     newLifelines -= 2;
-    setLog((l) => [...l, `${playerName} rolled ${dice} and loses 2 lifelines (remaining ${newLifelines})`]);
   }
 
-  return { revived, newHP, newLifelines };
+  return { revived, newHP, newLifelines, roll: dice };
 };
+
 
 
   // ------------------ Battle ------------------
@@ -203,52 +226,102 @@ const handleDowned = (
   };
 
   // ------------------ Downed Click Handler ------------------
-  const handleDownedClick = () => {
-    if (downedQueue.length === 0) return;
+const handleDownedClick = () => {
+  if (downedQueue.length === 0) return;
 
-    const current = downedQueue[0];
-    const opponentHP = current === 'p1' ? stats2[0].value : stats1[0].value;
+  const newQueue = [...downedQueue];
+  const newStats1 = [...stats1];
+  const newStats2 = [...stats2];
+  let updatedLifelines1 = lifelines1;
+  let updatedLifelines2 = lifelines2;
+  let tempLog: string[] = [...log];
+  let winner: string | null = null;
 
-    const result = current === 'p1'
-      ? handleDowned(name1, stats1, lifelines1, opponentHP)
-      : handleDowned(name2, stats2, lifelines2, opponentHP);
+  while (newQueue.length > 0) {
+    const current = newQueue.shift()!;
+    const opponentHP = current === 'p1' ? newStats2[0].value : newStats1[0].value;
+
+    const result =
+      current === 'p1'
+        ? handleDowned(name1, newStats1, updatedLifelines1, opponentHP)
+        : handleDowned(name2, newStats2, updatedLifelines2, opponentHP);
 
     if (current === 'p1') {
-      setStats1((prev) => [{ ...prev[0], value: result.newHP }, ...prev.slice(1)]);
-      setLifelines1(result.newLifelines);
+      newStats1[0] = { ...newStats1[0], value: result.newHP };
+      updatedLifelines1 = result.newLifelines;
     } else {
-      setStats2((prev) => [{ ...prev[0], value: result.newHP }, ...prev.slice(1)]);
-      setLifelines2(result.newLifelines);
+      newStats2[0] = { ...newStats2[0], value: result.newHP };
+      updatedLifelines2 = result.newLifelines;
     }
 
-    setDownedQueue((q) => q.slice(1));
+    // Log the roll, status, and remaining lifelines
+    tempLog.push(
+      `${current === 'p1' ? name1 : name2} rolled ${result.roll} and ${
+        result.revived ? 'got back up!' : 'stayed down.'
+      } Remaining lifelines: ${result.newLifelines}`
+    );
+  }
 
-    if (result.newLifelines <= 0) {
-      const winner = current === 'p1' ? name2 : name1;
-      setLog((l) => [...l, `${current === 'p1' ? name1 : name2} lost all lifelines! ${winner} wins!`]);
-      setDownedQueue([]);
-      setWinner(winner);
-    }
-  };
+  // Check for winner after resolving queue
+  if (updatedLifelines1 <= 0 && updatedLifelines2 <= 0) {
+    winner = 'Tie!';
+    tempLog.push(`Both players lost all lifelines!`);
+  } else if (updatedLifelines1 <= 0) {
+    winner = name2;
+    tempLog.push(`${name1} lost all lifelines! ${name2} wins!`);
+  } else if (updatedLifelines2 <= 0) {
+    winner = name1;
+    tempLog.push(`${name2} lost all lifelines! ${name1} wins!`);
+  }
+
+  // Commit updates
+  setStats1(newStats1);
+  setStats2(newStats2);
+  setLifelines1(updatedLifelines1);
+  setLifelines2(updatedLifelines2);
+  setLog(tempLog);
+  setDownedQueue([]);
+  setWinner(winner);
+};
+
+
 
 return (
-  <div className="min-h-screen bg-black text-[#00ff99] font-mono p-3">
+  <div className="min-h-screen bg-black text-[#00ff99] font-mono p-2 sm:p-3">
 
-    {/* 3 Grid Columns — A | B | LOG */}
-    <div className="max-w-7xl mx-auto grid grid-cols-3 gap-2">
+        <div className="flex gap-2 mb-2">
+      {/* Refresh Page */}
+      <button
+        onClick={() => window.location.reload()}
+        className="uppercase border-2 border-[#00ff99] py-1 px-2 font-bold text-xs sm:text-sm tracking-widest hover:bg-[#004d2e] active:scale-95"
+      >
+        CLEAR SIMULATION
+      </button>
 
-      {/* ------------------------------------- */}
-      {/* SUBJECT A */}
-      {/* ------------------------------------- */}
-      <div className="border-2 border-[#00ff99] p-3">
-        <h2 className="text-center text-[#00ffb3] font-bold text-xl tracking-widest border-b pb-1">
+      {/* Open Documentation Modal */}
+      <button
+        onClick={() => setDocModalOpen(true)}
+        className="uppercase border-2 border-[#00ff99] py-1 px-2 font-bold text-xs sm:text-sm tracking-widest hover:bg-[#004d2e] active:scale-95"
+      >
+        Documentation
+      </button>
+    </div>
+
+
+    {/* Mobile Portrait = 1 Col   →   Landscape / Tablet+ = 3 Col */}
+    <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+
+      {/* ===================== SUBJECT A ===================== */}
+      <div className="border-2 border-[#00ff99] p-2 sm:p-3 space-y-2 sm:space-y-3">
+        <h2 className="text-center text-[#00ffb3] font-bold 
+                       text-base sm:text-xl tracking-widest border-b pb-1">
           SUBJECT-A
         </h2>
 
         <CharacterSelector
           characters={characters}
           selectedId={selectedId1}
-          onSelect={(id) =>
+          onSelect={(id)=>
             handleSelect(id, setName1, setTitle1, setStats1, setIcon1, setPortrait1, setSelectedId1)
           }
         />
@@ -257,29 +330,30 @@ return (
           name={name1} setName={setName1}
           title={title1} setTitle={setTitle1}
           health={stats1[0].value}
-          setHealth={(v)=>handleStatChange(0,v,setStats1,stats1)}
+          setHealth={(v)=>handleStatChange(0, v, setStats1, stats1)}
           portrait={portrait1} icon={icon1}
         />
 
-        <StatsTable stats={stats1} onChange={(i,v)=>handleStatChange(i,v,setStats1,stats1)} />
+        <StatsTable stats={stats1}
+          onChange={(i,v)=>handleStatChange(i,v,setStats1,stats1)}
+        />
 
-        <div className="mt-3 border border-[#00ff99] p-2 text-center tracking-wide">
+        <div className="mt-2 border border-[#00ff99] p-1.5 text-xs sm:text-sm text-center tracking-wide">
           LIFELINES: {lifelines1}
         </div>
       </div>
 
-      {/* ------------------------------------- */}
-      {/* SUBJECT B */}
-      {/* ------------------------------------- */}
-      <div className="border-2 border-[#00ff99] p-3">
-        <h2 className="text-center text-[#00ffb3] font-bold text-xl tracking-widest border-b pb-1">
+      {/* ===================== SUBJECT B ===================== */}
+      <div className="border-2 border-[#00ff99] p-2 sm:p-3 space-y-2 sm:space-y-3">
+        <h2 className="text-center text-[#00ffb3] font-bold 
+                       text-base sm:text-xl tracking-widest border-b pb-1">
           SUBJECT-B
         </h2>
 
         <CharacterSelector
           characters={characters}
           selectedId={selectedId2}
-          onSelect={(id) =>
+          onSelect={(id)=>
             handleSelect(id, setName2, setTitle2, setStats2, setIcon2, setPortrait2, setSelectedId2)
           }
         />
@@ -288,61 +362,69 @@ return (
           name={name2} setName={setName2}
           title={title2} setTitle={setTitle2}
           health={stats2[0].value}
-          setHealth={(v)=>handleStatChange(0,v,setStats2,stats2)}
+          setHealth={(v)=>handleStatChange(0, v, setStats2, stats2)}
           portrait={portrait2} icon={icon2}
         />
 
-        <StatsTable stats={stats2} onChange={(i,v)=>handleStatChange(i,v,setStats2,stats2)} />
+        <StatsTable stats={stats2}
+          onChange={(i,v)=>handleStatChange(i,v,setStats2,stats2)}
+        />
 
-        <div className="mt-3 border border-[#00ff99] p-2 text-center tracking-wide">
+        <div className="mt-2 border border-[#00ff99] p-1.5 text-xs sm:text-sm text-center tracking-wide">
           LIFELINES: {lifelines2}
         </div>
       </div>
 
-      {/* ------------------------------------- */}
-      {/* LOG + BATTLE + RECOVERY */}
-      {/* ------------------------------------- */}
-      <div className="border-2 border-[#00ff99] p-3 flex flex-col">
-        
-        <h2 className="text-center border-b pb-1 font-bold tracking-widest">
+      {/* ================= SYSTEM LOG PANEL ================= */}
+      <div className="border-2 border-[#00ff99] p-2 sm:p-3 flex flex-col gap-2">
+
+        <h2 className="text-center border-b pb-1 font-bold tracking-widest text-sm sm:text-base">
           SYSTEM LOG FEED
         </h2>
 
-                  {/* BATTLE BUTTON */}
+        <button
+          onClick={battle}
+          disabled={downedQueue.length > 0}
+          className="uppercase border-2 border-[#00ff99] py-2 sm:py-3 font-bold 
+                     tracking-widest text-xs sm:text-sm 
+                     hover:bg-[#004d2e] active:scale-95 disabled:opacity-25"
+        >
+          Execute Combat Protocol
+        </button>
+
+        {downedQueue.length > 0 && (
           <button
-            onClick={battle}
-            disabled={downedQueue.length > 0}
-            className="uppercase border-2 border-[#00ff99] py-3 font-bold tracking-widest
-                       hover:bg-[#004d2e] active:scale-95 disabled:opacity-25"
+            onClick={() => {
+              if (!canAttemptRecovery) {
+                // Warning when trying to click while lifelines depleted
+                setLog((l) => [...l, '☠ Signal Lost: cannot attempt recovery!']);
+                return;
+              }
+              handleDownedClick();
+            }}
+            disabled={!canAttemptRecovery}
+            className="uppercase border-2 border-[#00ff99] py-2 font-bold tracking-widest
+                      text-xs sm:text-sm animate-pulse hover:bg-[#003d24] active:scale-95
+                      disabled:opacity-25 disabled:cursor-not-allowed"
           >
-            Execute Combat Protocol
+            Attempt Subject Recovery
           </button>
+        )}
 
-          {/* RECOVERY if someone is down */}
-          {downedQueue.length > 0 && (
-            <button
-              onClick={handleDownedClick}
-              className="uppercase border-2 border-[#00ff99] py-2 font-bold tracking-widest animate-pulse
-                         hover:bg-[#003d24] active:scale-95"
-            >
-              Attempt Subject Recovery
-            </button>
-          )}
-
-        <div className="flex-1 h-[65vh] overflow-y-auto p-2 text-[#00ff95] text-sm leading-tight">
+        <div className="flex-1 h-[45vh] sm:h-[65vh] overflow-y-auto p-2 
+                        text-[#00ff95] text-xs sm:text-sm leading-tight">
           <BattleLog log={log} />
-        </div>
-
-        <div className="mt-3 flex flex-col gap-3">
-
-
         </div>
 
       </div>
 
+      <DocumentationModal isOpen={docModalOpen} onClose={() => setDocModalOpen(false)} />
+
     </div>
   </div>
 );
+
+
 
 
 
