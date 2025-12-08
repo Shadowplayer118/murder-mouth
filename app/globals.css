@@ -2,6 +2,35 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+/* Global scrollbar styles for cyberpunk neon theme */
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000; /* black track */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #00ff99; /* neon green */
+  border-radius: 4px;
+  border: 2px solid #000; /* separation */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #00ffcc; /* brighter green on hover */
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #00ff99 #000;
+}
+
 /* 
 :root {
   --background: #ffffff;

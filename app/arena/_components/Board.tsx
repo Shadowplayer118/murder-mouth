@@ -41,6 +41,7 @@ const Board = () => {
   const [portrait1, setPortrait1] = useState<string | null>(null);
   const [lifelines1, setLifelines1] = useState(3);
   const [docModalOpen, setDocModalOpen] = useState(false);
+  const [reviveCap1,setReviveCap1] = useState(null)
 
 
   // ------------------ Player 2 ------------------
@@ -154,7 +155,7 @@ const handleDowned = (
   if (dice <= 3) {
     // Successful revival
     revived = true;
-    newHP = Math.max(1, opponentHP - 2);
+    newHP = Math.floor(Math.random() * (opponentHP - 1)) + 1;
     newLifelines = 3; // Reset lifelines after revival
   } else if (dice <= 5) {
     newLifelines -= 1;
@@ -208,14 +209,16 @@ const handleDowned = (
 
       const [dmgTo1, dmgTo2] = damageMap[action1][action2] || [0, 0];
 
-      const excess1 = dmgTo1 < -newStats1[0].value ? -newStats1[0].value + dmgTo1 : 0;
-      const excess2 = dmgTo2 < -newStats2[0].value ? -newStats2[0].value + dmgTo2 : 0;
+      const excess1 = Math.max(0, Math.abs(dmgTo1) - newStats1[0].value);
+      const excess2 = Math.max(0, Math.abs(dmgTo2) - newStats2[0].value);
+
 
       newStats1[0].value = Math.max(0, newStats1[0].value + dmgTo1);
       newStats2[0].value = Math.max(0, newStats2[0].value + dmgTo2);
 
-      if (excess1) setLifelines1((l) => Math.max(0, l + excess1));
-      if (excess2) setLifelines2((l) => Math.max(0, l + excess2));
+      if (excess1) setLifelines1((l) => Math.max(0, l - excess1));
+
+      if (excess2) setLifelines2((l) => Math.max(0, l - excess2));
 
       eventLog += `HP Change => ${name1}: ${newStats1[0].value}, ${name2}: ${newStats2[0].value}`;
     }

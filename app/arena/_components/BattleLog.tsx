@@ -30,7 +30,11 @@ const BattleLog: React.FC<BattleLogProps> = ({ log }) => {
                        ${isExpanded ? "max-h-[60vh] opacity-100" : "max-h-0 opacity-0"}`}>
 
         <div className="p-2 h-[60vh] overflow-y-auto leading-tight tracking-wide 
-                        scrollbar-thin scrollbar-thumb-[#00ff99] scrollbar-track-black">
+                        scrollbar-thin scrollbar-thumb-[#00ff99] scrollbar-track-black"
+                         style={{
+                            scrollbarWidth: 'thin',           // for Firefox
+                            scrollbarColor: '#00ff99 #000',   // thumb color, track color
+                          }}>
 
           {/* EMPTY STATE */}
           {log.length === 0 && (
