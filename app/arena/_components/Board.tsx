@@ -199,10 +199,10 @@ const handleDowned = (
       eventLog += 'They clash, nothing happens.';
     } else {
       const damageMap: Record<ActionType, Record<ActionType, [number, number]>> = {
-        Int: { Int: [0,0], Per: [0, -2], Def: [-2, 0], Spd: [0, -2], Dmg: [-6, 0], Crit: [-8, 0] },
-        Per: { Int: [-2, 0], Per: [0,0], Def: [-6, 0], Spd: [0, -2], Dmg: [0, -4], Crit: [0, -6] },
+        Int: { Int: [0,0], Per: [0, -8], Def: [-2, 0], Spd: [0, -4], Dmg: [-6, 0], Crit: [-8, 0] },
+        Per: { Int: [-8, 0], Per: [0,0], Def: [-6, 0], Spd: [0, -2], Dmg: [0, -4], Crit: [0, -6] },
         Def: { Int: [0, -2], Per: [0, -6], Def: [0,0], Spd: [-1, 0], Dmg: [-2, 0], Crit: [-4, 0] },
-        Spd: { Int: [-2, 0], Per: [-2, 0], Def: [0, -1], Spd: [0,0], Dmg: [0, -2], Crit: [0, -2] },
+        Spd: { Int: [-4, 0], Per: [-2, 0], Def: [0, -1], Spd: [0,0], Dmg: [0, -2], Crit: [0, -2] },
         Dmg: { Int: [0, -6], Per: [-4, 0], Def: [0, -2], Spd: [-2, 0], Dmg: [0,0], Crit: [-6, -4] },
         Crit: { Int: [0, -8], Per: [-6, 0], Def: [0, -4], Spd: [-2, 0], Dmg: [-4, -6], Crit: [0,0] },
       };
