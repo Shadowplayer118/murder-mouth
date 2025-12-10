@@ -1,274 +1,160 @@
-'use client';
-
 import { useEffect, useState } from 'react';
-import GridBoard from './GridBoard';
-import TeamSelector from './TeamSelector';
-import TurnOrderPanel from './TurnOrderPanel';
-import MovementController from './MovementController';
+import { getRandomPosition, GRID_SIZE, generateTurnOrder } from './utils/gridHelper';
+import { CharacterData, Player, Objective, TurnOrderEntry, MovementLog } from './types';
+import { handleNextTurn as baseHandleNextTurn, directions } from './utils/turnHelper';
+import PlayerSelector from './PlayerSelector';
+import TurnOrderTable from './TurnOrderTable';
+import MovementLogTable from './MovementLogTable';
 
-
-type CellType = 'empty' | 'obstruction' | 'objective' | Character;
-
-interface Character {
-  name: string;
-  role?: string;
-  portrait?: string;
-  mvmt_spd?: string;
-  team?: 'A' | 'B';
-}
-
-
-const GRID_SIZE = 8;
-const NUM_OBSTRUCTIONS = 5;
-
-interface TurnCharacter extends Character {
-  uniqueNum: number;
-  finalSpeed: number;
-}
-
-type Direction = 'up' | 'down' | 'left' | 'right';
-
-export default function GridWithDesign() {
-  const [grid, setGrid] = useState<CellType[][]>(
-    Array(GRID_SIZE)
-      .fill([])
-      .map(() => Array(GRID_SIZE).fill('empty'))
-  );
-  const [shown, setShown] = useState(false);
-  const [allCharacters, setAllCharacters] = useState<Character[]>([]);
-  const [teamA, setTeamA] = useState<(Character | null)[]>(Array(5).fill(null));
-  const [teamB, setTeamB] = useState<(Character | null)[]>(Array(5).fill(null));
-  const [turnOrder, setTurnOrder] = useState<TurnCharacter[]>([]);
-  const [positions, setPositions] = useState<Record<string, [number, number]>>({});
-  const [intel, setIntel] = useState<{ A: string[]; B: string[] }>({ A: [], B: [] });
+export default function GameSetup() {
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [objective, setObjective] = useState<Objective | null>(null);
+  const [characters, setCharacters] = useState<CharacterData[]>([]);
+  const [turnOrder, setTurnOrder] = useState<TurnOrderEntry[]>([]);
+  const [currentTurnIndex, setCurrentTurnIndex] = useState<number>(0);
+  const [movementLogs, setMovementLogs] = useState<MovementLog[]>([]);
+  const [teamIntel, setTeamIntel] = useState<{ [team: string]: string[] }>({ X: [], Y: [] });
 
   useEffect(() => {
     fetch('/data/characters.json')
-      .then((res) => res.json())
-      .then((data) => setAllCharacters(data))
-      .catch((err) => console.error(err));
+      .then(res => res.json())
+      .then((data: CharacterData[]) => setCharacters(data));
   }, []);
 
-  const generateGrid = () => {
-    const newGrid: CellType[][] = Array(GRID_SIZE)
-      .fill([])
-      .map(() => Array(GRID_SIZE).fill('empty'));
+  useEffect(() => {
+    const existingPositions = new Set<string>();
+    const newPlayers: Player[] = [];
 
-    const getRandomEmptyCell = (): [number, number] => {
-      let x: number, y: number;
-      do {
-        x = Math.floor(Math.random() * GRID_SIZE);
-        y = Math.floor(Math.random() * GRID_SIZE);
-      } while (newGrid[y][x] !== 'empty');
-      return [y, x];
-    };
-
-    const newPositions: Record<string, [number, number]> = {};
-
-    // Obstructions
-    for (let i = 0; i < NUM_OBSTRUCTIONS; i++) {
-      const [y, x] = getRandomEmptyCell();
-      newGrid[y][x] = 'obstruction';
+    for (let i = 1; i <= 5; i++) {
+      newPlayers.push({
+        name: `x-${i}`,
+        team: 'X',
+        position: getRandomPosition(existingPositions),
+        character: null,
+      });
+    }
+    for (let i = 1; i <= 5; i++) {
+      newPlayers.push({
+        name: `y-${i}`,
+        team: 'Y',
+        position: getRandomPosition(existingPositions),
+        character: null,
+      });
     }
 
-    // Objective
-    const [objY, objX] = getRandomEmptyCell();
-    newGrid[objY][objX] = 'objective';
+    const objPos = getRandomPosition(existingPositions);
+    setPlayers(newPlayers);
+    setObjective({ position: objPos });
+  }, [characters]);
 
-    // Team A
-    teamA.forEach((member) => {
-      if (!member) return;
-      const [y, x] = getRandomEmptyCell();
-      newGrid[y][x] = member;
-      newPositions[member.name] = [y, x];
-    });
-
-    // Team B
-    teamB.forEach((member) => {
-      if (!member) return;
-      const [y, x] = getRandomEmptyCell();
-      newGrid[y][x] = member;
-      newPositions[member.name] = [y, x];
-    });
-
-    setPositions(newPositions);
-    setGrid(newGrid);
-    setShown(true);
-    calculateTurnOrder();
-    setIntel({ A: [], B: [] }); // reset intel
+  const handleSelectCharacter = (playerIndex: number, characterName: string) => {
+    const selectedChar = characters.find(c => c.name === characterName) || null;
+    setPlayers(prev => prev.map((p, i) => (i === playerIndex ? { ...p, character: selectedChar } : p)));
   };
 
-  const handleSelect = (team: 'A' | 'B', index: number, charName: string) => {
-    const selected = allCharacters.find((c) => c.name === charName) || null;
-    if (team === 'A') {
-      const newTeam = [...teamA];
-      newTeam[index] = selected;
-      setTeamA(newTeam);
-    } else {
-      const newTeam = [...teamB];
-      newTeam[index] = selected;
-      setTeamB(newTeam);
-    }
-  };
-
-  const calculateTurnOrder = () => {
-    const selectedCharacters = [...teamA, ...teamB].filter(Boolean) as Character[];
-
-    const turnChars: TurnCharacter[] = selectedCharacters.map((c, idx) => {
-      const uniqueNum = idx + 1;
-      const mvmtSpdNum = parseInt(c.mvmt_spd || '0', 10);
-      return { ...c, uniqueNum, finalSpeed: mvmtSpdNum + uniqueNum };
+  const handleNextTurn = () => {
+    const result = baseHandleNextTurn({
+      players,
+      turnOrder,
+      currentTurnIndex,
+      objective,
+      setPlayers,
+      setTurnOrder,
+      setCurrentTurnIndex,
+      movementLogs,
+      setMovementLogs,
     });
 
-    turnChars.sort((a, b) => b.finalSpeed - a.finalSpeed);
-    setTurnOrder(turnChars);
+    // Scan in the direction moved
+    const currentPlayer = players.find(p => p.name === turnOrder[currentTurnIndex].playerName);
+
+    if (!currentPlayer) return;
+
+    const dir = result.lastMoveDirection; // assume handleNextTurn returns last move direction
+    const [x, y] = currentPlayer.position;
+    let scanned: string | null = null;
+
+    for (let i = 1; i <= GRID_SIZE; i++) {
+      let nx = x, ny = y;
+      if (dir === 'up') nx -= i;
+      else if (dir === 'down') nx += i;
+      else if (dir === 'left') ny -= i;
+      else if (dir === 'right') ny += i;
+
+      if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) break;
+
+      // Check for objective
+      if (objective && objective.position[0] === nx && objective.position[1] === ny) {
+        scanned = `Objective spotted at [${nx},${ny}]`;
+        break;
+      }
+
+      // Check for other players
+      const other = players.find(p => p.position[0] === nx && p.position[1] === ny);
+      if (other) {
+        if (other.team !== currentPlayer.team) {
+          scanned = `Enemy spotted at [${nx},${ny}]`;
+          break;
+        } else if (other.character?.max_health === 0) {
+          scanned = `Downed teammate at [${nx},${ny}]`;
+          break;
+        }
+      }
+    }
+
+    if (scanned) {
+      // Add to movement log
+      setMovementLogs(prev => [
+        ...prev,
+        {
+          turn: currentTurnIndex + 1,
+          player: currentPlayer.name,
+          move: dir,
+          newPos: currentPlayer.position,
+          announcement: scanned,
+        },
+      ]);
+
+      // Add to team intel
+      setTeamIntel(prev => ({
+        ...prev,
+        [currentPlayer.team]: [...(prev[currentPlayer.team] || []), scanned],
+      }));
+    }
   };
-
-  // Move first character in turn order randomly
-const performAction = () => {
-  if (turnOrder.length === 0) return;
-
-  const directions: Direction[] = ['up', 'down', 'left', 'right'];
-  const randomDir = directions[Math.floor(Math.random() * directions.length)];
-
-  const char = turnOrder[0];
-  const [y, x] = positions[char.name];
-
-  let newY = y;
-  let newX = x;
-
-  if (randomDir === 'up') newY = Math.max(0, y - 1);
-  if (randomDir === 'down') newY = Math.min(GRID_SIZE - 1, y + 1);
-  if (randomDir === 'left') newX = Math.max(0, x - 1);
-  if (randomDir === 'right') newX = Math.min(GRID_SIZE - 1, x + 1);
-
-  const targetCell = grid[newY][newX];
-
-  // Determine team key and teams
-  const isTeamA = teamA.some((member) => member?.name === char.name);
-  const teamKey: 'A' | 'B' = isTeamA ? 'A' : 'B';
-  const allyTeam = isTeamA ? teamA : teamB;
-  const enemyTeam = isTeamA ? teamB : teamA;
-
-  const newGrid = grid.map((row) => [...row]);
-
-  // Only move if the target cell is empty
-  if (targetCell === 'empty') {
-    newGrid[y][x] = 'empty';
-    newGrid[newY][newX] = char;
-    setGrid(newGrid);
-
-    const newPositions = { ...positions, [char.name]: [newY, newX] };
-    setPositions(newPositions);
-  }
-
-  // Sight calculation
-  const sight: string[] = [];
-  let checkY = newY;
-  let checkX = newX;
-
-  while (true) {
-    if (randomDir === 'up') checkY--;
-    if (randomDir === 'down') checkY++;
-    if (randomDir === 'left') checkX--;
-    if (randomDir === 'right') checkX++;
-    if (checkY < 0 || checkY >= GRID_SIZE || checkX < 0 || checkX >= GRID_SIZE) break;
-
-    const cell = newGrid[checkY][checkX];
-    if (cell === 'empty') continue;
-    if (cell === 'obstruction') {
-      sight.push('obstruction');
-      break;
-    }
-    if (cell === 'objective') {
-      sight.push('objective');
-      break;
-    }
-    if (typeof cell !== 'string') {
-      const isAlly = allyTeam.some((member) => member?.name === cell.name);
-      sight.push(`${cell.name} (${isAlly ? 'ally' : 'enemy'})`);
-      break;
-    }
-  }
-
-  // Log movement or blocked
-  const movementLog =
-    targetCell === 'empty'
-      ? `${char.name} moves ${randomDir} and sees: ${sight.join(', ') || 'nothing'}`
-      : `${char.name} tries to move ${randomDir} but is blocked by ${typeof targetCell === 'string' ? targetCell : targetCell.name}. Sees: ${sight.join(', ') || 'nothing'}`;
-
-  setIntel((prev) => ({
-    ...prev,
-    [teamKey]: [...prev[teamKey], movementLog],
-  }));
-
-  // Remove character from turn order
-  setTurnOrder((prev) => prev.slice(1));
-};
-
 
   return (
-    <div className="flex flex-col items-center gap-4 p-4">
-
-        <MovementController
-  grid={grid}
-  setGrid={setGrid}
-  positions={positions}
-  setPositions={setPositions}
-  turnOrder={turnOrder}
-  setTurnOrder={setTurnOrder}
-  teamA={teamA}
-  teamB={teamB}
-  setIntel={setIntel}
-  intel={intel}
-  GRID_SIZE={GRID_SIZE}
-/>
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4">Players:</h2>
+      <PlayerSelector players={players} characters={characters} onSelectCharacter={handleSelectCharacter} />
       <button
-        onClick={generateGrid}
-        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        onClick={handleNextTurn}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mb-4"
       >
-        Generate Grid
+        Next Turn
       </button>
 
-      {shown && <GridBoard grid={grid} teamA={teamA} />}
+      <TurnOrderTable turnOrder={turnOrder} currentTurnIndex={currentTurnIndex} />
+      <MovementLogTable movementLogs={movementLogs} />
 
-      <TeamSelector
-        teamName="A"
-        team={teamA}
-        allCharacters={allCharacters}
-        onSelect={handleSelect}
-      />
-      <TeamSelector
-        teamName="B"
-        team={teamB}
-        allCharacters={allCharacters}
-        onSelect={handleSelect}
-      />
+      {objective && (
+        <p className="mt-4 text-white">
+          Objective: [{objective.position[0]}, {objective.position[1]}]
+        </p>
+      )}
 
-      <TurnOrderPanel turnOrder={turnOrder} />
-
-
-      {/* Single Random Action Button */}
-
-
-      {/* Intel Panels */}
-      <div className="flex gap-4 mt-4 w-full max-w-md">
-        <div className="flex-1 border p-2 rounded bg-gray-100">
-          <h4 className="font-bold">Team A Intel</h4>
-          <ul className="list-disc list-inside">
-            {intel.A.map((entry, i) => (
-              <li key={i}>{entry}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="flex-1 border p-2 rounded bg-gray-100">
-          <h4 className="font-bold">Team B Intel</h4>
-          <ul className="list-disc list-inside">
-            {intel.B.map((entry, i) => (
-              <li key={i}>{entry}</li>
-            ))}
-          </ul>
-        </div>
+      <div className="mt-4 text-white">
+        <h2 className="text-lg font-bold">Team Intel</h2>
+        {Object.entries(teamIntel).map(([team, intel]) => (
+          <div key={team}>
+            <p className="font-semibold">Team {team}:</p>
+            <ul>
+              {intel.map((i, idx) => (
+                <li key={idx}>{i}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
     </div>
   );
