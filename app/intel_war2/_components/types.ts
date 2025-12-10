@@ -1,4 +1,10 @@
-// Character type for JSON data
+export type Player = {
+  id: string;
+  team: "X" | "Y";
+  position?: [number, number];
+  character?: CharacterData | null;
+};
+
 export type CharacterData = {
   name: string;
   title: string;
@@ -20,35 +26,4 @@ export type CharacterData = {
   ability: string;
   portrait: string;
   icon: string;
-};
-
-// Player on the grid
-export type Player = {
-  name: string;
-  team: 'X' | 'Y';
-  position: [number, number];
-  character: CharacterData | null;
-};
-
-// Objective location
-export type Objective = {
-  position: [number, number];
-};
-
-// Turn order entry
-export type TurnOrderEntry = {
-  playerName: string;
-  characterName: string;
-  mvmt_spd: number;
-  randomTieBreaker: number;
-  totalSpeed: number;
-};
-
-// Movement logs
-export type MovementLog = {
-  turn: number;
-  player: string;
-  move: string;
-  announcement?: string;
-  newPos: [number, number];
 };

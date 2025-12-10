@@ -1,160 +1,181 @@
-import { useEffect, useState } from 'react';
-import { getRandomPosition, GRID_SIZE, generateTurnOrder } from './utils/gridHelper';
-import { CharacterData, Player, Objective, TurnOrderEntry, MovementLog } from './types';
-import { handleNextTurn as baseHandleNextTurn, directions } from './utils/turnHelper';
-import PlayerSelector from './PlayerSelector';
-import TurnOrderTable from './TurnOrderTable';
-import MovementLogTable from './MovementLogTable';
+"use client";
 
-export default function GameSetup() {
+import React, { useState, useEffect } from "react";
+import { startGameRandomizer } from "./utils/startGame";
+import { Player, CharacterData } from "./types";
+import BoardDisplay from "./BoardDisplay";
+import CharacterSelect from "./CharacterSelect";
+import { calculateTurnOrder, PlayerWithSpeed } from "./utils/calculateTurnOrder";
+import TurnOrderDisplay from "./TurnOrderDisplay";
+
+export default function CoordinateInfo() {
+  const [characterList, setCharacterList] = useState<CharacterData[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [objective, setObjective] = useState<Objective | null>(null);
-  const [characters, setCharacters] = useState<CharacterData[]>([]);
-  const [turnOrder, setTurnOrder] = useState<TurnOrderEntry[]>([]);
+  const [objective, setObjective] = useState<[number, number] | null>(null);
+  const [turnOrder, setTurnOrder] = useState<PlayerWithSpeed[]>([]);
   const [currentTurnIndex, setCurrentTurnIndex] = useState<number>(0);
-  const [movementLogs, setMovementLogs] = useState<MovementLog[]>([]);
-  const [teamIntel, setTeamIntel] = useState<{ [team: string]: string[] }>({ X: [], Y: [] });
+  const [log, setLog] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch('/data/characters.json')
+    fetch("/data/characters.json")
       .then(res => res.json())
-      .then((data: CharacterData[]) => setCharacters(data));
+      .then(data => setCharacterList(Array.isArray(data) ? data : [data]));
+
+    const initialPlayers: Player[] = [
+      { id: "x1", team: "X", character: null },
+      { id: "x2", team: "X", character: null },
+      { id: "x3", team: "X", character: null },
+      { id: "x4", team: "X", character: null },
+      { id: "x5", team: "X", character: null },
+      { id: "y1", team: "Y", character: null },
+      { id: "y2", team: "Y", character: null },
+      { id: "y3", team: "Y", character: null },
+      { id: "y4", team: "Y", character: null },
+      { id: "y5", team: "Y", character: null },
+    ];
+
+    setPlayers(initialPlayers);
   }, []);
 
-  useEffect(() => {
-    const existingPositions = new Set<string>();
-    const newPlayers: Player[] = [];
-
-    for (let i = 1; i <= 5; i++) {
-      newPlayers.push({
-        name: `x-${i}`,
-        team: 'X',
-        position: getRandomPosition(existingPositions),
-        character: null,
-      });
-    }
-    for (let i = 1; i <= 5; i++) {
-      newPlayers.push({
-        name: `y-${i}`,
-        team: 'Y',
-        position: getRandomPosition(existingPositions),
-        character: null,
-      });
-    }
-
-    const objPos = getRandomPosition(existingPositions);
-    setPlayers(newPlayers);
-    setObjective({ position: objPos });
-  }, [characters]);
-
-  const handleSelectCharacter = (playerIndex: number, characterName: string) => {
-    const selectedChar = characters.find(c => c.name === characterName) || null;
-    setPlayers(prev => prev.map((p, i) => (i === playerIndex ? { ...p, character: selectedChar } : p)));
+  const assignCharacter = (playerId: string, character: CharacterData) => {
+    setPlayers(prev =>
+      prev.map(p => (p.id === playerId ? { ...p, character } : p))
+    );
   };
 
-  const handleNextTurn = () => {
-    const result = baseHandleNextTurn({
-      players,
-      turnOrder,
-      currentTurnIndex,
-      objective,
-      setPlayers,
-      setTurnOrder,
-      setCurrentTurnIndex,
-      movementLogs,
-      setMovementLogs,
-    });
+const handleAction = () => {
+  if (turnOrder.length === 0 || currentTurnIndex >= turnOrder.length) {
+    // generate new turn order
+    const newTurnOrder = calculateTurnOrder(players);
+    setTurnOrder(newTurnOrder);
+    setCurrentTurnIndex(0);
+    setLog(prev => [...prev, "--- New Turn Order Generated ---"]);
+    return;
+  }
 
-    // Scan in the direction moved
-    const currentPlayer = players.find(p => p.name === turnOrder[currentTurnIndex].playerName);
+  const activePlayer = turnOrder[currentTurnIndex];
+  if (!activePlayer.character) return;
 
-    if (!currentPlayer) return;
+  const action = Math.random() < 0.5 ? "move" : "view";
 
-    const dir = result.lastMoveDirection; // assume handleNextTurn returns last move direction
-    const [x, y] = currentPlayer.position;
-    let scanned: string | null = null;
+  let logEntry = "";
+  let found = false;
 
-    for (let i = 1; i <= GRID_SIZE; i++) {
-      let nx = x, ny = y;
-      if (dir === 'up') nx -= i;
-      else if (dir === 'down') nx += i;
-      else if (dir === 'left') ny -= i;
-      else if (dir === 'right') ny += i;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const coord: [number, number] = [
+      Math.floor(Math.random() * 8),
+      Math.floor(Math.random() * 8)
+    ];
 
-      if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) break;
+    if (action === "move") {
+      const occupyingPlayer = players.find(
+        p => p.position?.[0] === coord[0] && p.position?.[1] === coord[1]
+      );
 
-      // Check for objective
-      if (objective && objective.position[0] === nx && objective.position[1] === ny) {
-        scanned = `Objective spotted at [${nx},${ny}]`;
+      if (occupyingPlayer) {
+        if (occupyingPlayer.team === activePlayer.team) {
+          logEntry = `Regrouped with ${occupyingPlayer.character?.name ?? occupyingPlayer.id}`;
+        } else {
+          logEntry = `Engaging enemy at (${coord[0]}, ${coord[1]})`;
+        }
+        found = true; // stop after first encounter
+        break;
+      } else if (objective && coord[0] === objective[0] && coord[1] === objective[1]) {
+        logEntry = `${activePlayer.character.name} → Objective Secured!`;
+        setPlayers(prev =>
+          prev.map(p =>
+            p.id === activePlayer.id ? { ...p, position: [...objective] } : p
+          )
+        );
+        const { objective: newObjective } = startGameRandomizer(players);
+        setObjective(newObjective);
+        found = true;
+        break;
+      } else {
+        // move freely
+        setPlayers(prev =>
+          prev.map(p =>
+            p.id === activePlayer.id ? { ...p, position: coord } : p
+          )
+        );
+        logEntry = `${activePlayer.character.name} moved to (${coord[0]}, ${coord[1]})`;
+        found = true;
         break;
       }
+    } else if (action === "view") {
+      const foundPlayer = players.find(
+        p => p.position?.[0] === coord[0] && p.position?.[1] === coord[1]
+      );
 
-      // Check for other players
-      const other = players.find(p => p.position[0] === nx && p.position[1] === ny);
-      if (other) {
-        if (other.team !== currentPlayer.team) {
-          scanned = `Enemy spotted at [${nx},${ny}]`;
-          break;
-        } else if (other.character?.max_health === 0) {
-          scanned = `Downed teammate at [${nx},${ny}]`;
-          break;
+      if (objective && coord[0] === objective[0] && coord[1] === objective[1]) {
+        logEntry = `${activePlayer.character.name} → Objective spotted at (${coord[0]}, ${coord[1]})`;
+        found = true;
+        break;
+      } else if (foundPlayer) {
+        if (foundPlayer.team === activePlayer.team) {
+          logEntry = `${activePlayer.character.name} → You're clear ${foundPlayer.character?.name ?? foundPlayer.id}`;
+        } else {
+          logEntry = `${activePlayer.character.name} → Enemy spotted at (${coord[0]}, ${coord[1]})`;
         }
+        found = true;
+        break;
       }
     }
+  }
 
-    if (scanned) {
-      // Add to movement log
-      setMovementLogs(prev => [
-        ...prev,
-        {
-          turn: currentTurnIndex + 1,
-          player: currentPlayer.name,
-          move: dir,
-          newPos: currentPlayer.position,
-          announcement: scanned,
-        },
-      ]);
-
-      // Add to team intel
-      setTeamIntel(prev => ({
-        ...prev,
-        [currentPlayer.team]: [...(prev[currentPlayer.team] || []), scanned],
-      }));
+  if (!found) {
+    // report nothing after 5 unsuccessful tries
+    if (action === "move") {
+      logEntry = `${activePlayer.character.name} → Could not move after searching 5 locations.`;
+    } else {
+      logEntry = `${activePlayer.character.name} → Nothing found after scanning 5 locations.`;
     }
-  };
+  }
+
+  setLog(prev => [...prev, logEntry]);
+
+  // move to next player
+  setCurrentTurnIndex(prev => prev + 1);
+};
+
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Players:</h2>
-      <PlayerSelector players={players} characters={characters} onSelectCharacter={handleSelectCharacter} />
+    <div className="flex flex-col items-center p-6 text-white bg-gray-900 min-h-screen">
+      <CharacterSelect
+        players={players}
+        characterList={characterList}
+        onSelect={assignCharacter}
+      />
+
       <button
-        onClick={handleNextTurn}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mb-4"
+        onClick={() => {
+          const { players: newPlayers, objective: obj } = startGameRandomizer(players);
+          setPlayers(newPlayers);
+          setObjective(obj);
+        }}
+        className="px-4 py-2 mt-6 text-black bg-yellow-400 font-bold rounded-lg hover:bg-yellow-300"
       >
-        Next Turn
+        PLAY
       </button>
 
-      <TurnOrderTable turnOrder={turnOrder} currentTurnIndex={currentTurnIndex} />
-      <MovementLogTable movementLogs={movementLogs} />
+      <button
+        onClick={handleAction}
+        className="px-4 py-2 mt-4 text-black bg-green-400 font-bold rounded-lg hover:bg-green-300"
+      >
+        ACTION → Next Turn
+      </button>
 
-      {objective && (
-        <p className="mt-4 text-white">
-          Objective: [{objective.position[0]}, {objective.position[1]}]
-        </p>
-      )}
+      <TurnOrderDisplay turnOrder={turnOrder} currentTurnIndex={currentTurnIndex} />
+      <BoardDisplay players={players} objective={objective} />
 
-      <div className="mt-4 text-white">
-        <h2 className="text-lg font-bold">Team Intel</h2>
-        {Object.entries(teamIntel).map(([team, intel]) => (
-          <div key={team}>
-            <p className="font-semibold">Team {team}:</p>
-            <ul>
-              {intel.map((i, idx) => (
-                <li key={idx}>{i}</li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      {/* Log display */}
+      <div className="mt-6 w-full max-w-xl bg-gray-800 p-4 rounded-lg overflow-y-auto h-64">
+        <h2 className="text-lg font-bold text-white mb-2">Action Log</h2>
+        <div className="text-sm text-gray-200 space-y-1">
+          {log.map((entry, idx) => (
+            <div key={idx}>{entry}</div>
+          ))}
+        </div>
       </div>
     </div>
   );
