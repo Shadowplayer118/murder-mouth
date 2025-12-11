@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, JSX} from "react";
 import { startGameRandomizer } from "./utils/startGame";
 import { Player, CharacterData } from "./types";
 import BoardDisplay from "./BoardDisplay";
@@ -8,13 +8,16 @@ import CharacterSelect from "./CharacterSelect";
 import { calculateTurnOrder, PlayerWithSpeed } from "./utils/calculateTurnOrder";
 import TurnOrderDisplay from "./TurnOrderDisplay";
 
+
 export default function CoordinateInfo() {
   const [characterList, setCharacterList] = useState<CharacterData[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [objective, setObjective] = useState<[number, number] | null>(null);
   const [turnOrder, setTurnOrder] = useState<PlayerWithSpeed[]>([]);
   const [currentTurnIndex, setCurrentTurnIndex] = useState<number>(0);
-  const [log, setLog] = useState<string[]>([]);
+
+  // 🔥 CHANGE 1: log now stores JSX elements
+  const [log, setLog] = useState<JSX.Element[]>([]);
 
   useEffect(() => {
     fetch("/data/characters.json")
@@ -43,101 +46,134 @@ export default function CoordinateInfo() {
     );
   };
 
-const handleAction = () => {
-  if (turnOrder.length === 0 || currentTurnIndex >= turnOrder.length) {
-    // generate new turn order
-    const newTurnOrder = calculateTurnOrder(players);
-    setTurnOrder(newTurnOrder);
-    setCurrentTurnIndex(0);
-    setLog(prev => [...prev, "--- New Turn Order Generated ---"]);
-    return;
-  }
+  const handleAction = () => {
+    if (turnOrder.length === 0 || currentTurnIndex >= turnOrder.length) {
+      const newTurnOrder = calculateTurnOrder(players);
+      setTurnOrder(newTurnOrder);
+      setCurrentTurnIndex(0);
 
-  const activePlayer = turnOrder[currentTurnIndex];
-  if (!activePlayer.character) return;
+      // 🔥 CHANGE 2: Use JSX log entry
+      setLog(prev => [
+        ...prev,
+        <div className="text-yellow-300 font-bold" key={prev.length}>
+          --- New Turn Order Generated ---
+        </div>
+      ]);
+      return;
+    }
 
-  const action = Math.random() < 0.5 ? "move" : "view";
+    const activePlayer = turnOrder[currentTurnIndex];
+    if (!activePlayer.character) return;
 
-  let logEntry = "";
-  let found = false;
+    const actorName = activePlayer.character.name;
+    const actorImg = activePlayer.character.portrait || "default.png";
 
-  for (let attempt = 1; attempt <= 5; attempt++) {
-    const coord: [number, number] = [
-      Math.floor(Math.random() * 8),
-      Math.floor(Math.random() * 8)
-    ];
+    const action = Math.random() < 0.5 ? "move" : "view";
 
-    if (action === "move") {
-      const occupyingPlayer = players.find(
-        p => p.position?.[0] === coord[0] && p.position?.[1] === coord[1]
-      );
+    let logEntry: JSX.Element = <></>; // JSX instead of string
+    let found = false;
 
-      if (occupyingPlayer) {
-        if (occupyingPlayer.team === activePlayer.team) {
-          logEntry = `Regrouped with ${occupyingPlayer.character?.name ?? occupyingPlayer.id}`;
-        } else {
-          logEntry = `Engaging enemy at (${coord[0]}, ${coord[1]})`;
-        }
-        found = true; // stop after first encounter
-        break;
-      } else if (objective && coord[0] === objective[0] && coord[1] === objective[1]) {
-        logEntry = `${activePlayer.character.name} → Objective Secured!`;
-        setPlayers(prev =>
-          prev.map(p =>
-            p.id === activePlayer.id ? { ...p, position: [...objective] } : p
-          )
+    // 🔥 CHANGE 3: makeLog returns a JSX block with an <img>
+// Updated makeLog
+const makeLog = (msg: string, playerTeam: "X" | "Y" = activePlayer.team): JSX.Element => (
+  <div key={Math.random()} className="flex items-center gap-2">
+    <img
+      src={`/images/${actorImg}`}
+      alt={actorName}
+      className="w-6 h-6 rounded border border-gray-600"
+    />
+    <span
+      className={`font-bold ${playerTeam === "X" ? "text-blue-400" : "text-red-400"}`}
+    >
+      {actorName}:
+    </span>
+    <span>{msg}</span>
+  </div>
+);
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      const coord: [number, number] = [
+        Math.floor(Math.random() * 8),
+        Math.floor(Math.random() * 8)
+      ];
+
+      if (action === "move") {
+        const occupyingPlayer = players.find(
+          p => p.position?.[0] === coord[0] && p.position?.[1] === coord[1]
         );
-        const { objective: newObjective } = startGameRandomizer(players);
-        setObjective(newObjective);
-        found = true;
-        break;
-      } else {
-        // move freely
+
+        if (occupyingPlayer) {
+          logEntry = makeLog(
+            occupyingPlayer.team === activePlayer.team
+              ? `Regrouped with ${occupyingPlayer.character?.name ?? occupyingPlayer.id} [${coord[0]},${coord[1]}]`
+              : `I've made contact with the enemy [${coord[0]},${coord[1]}]`
+          );
+          found = true;
+          break;
+        }
+
+        if (objective && coord[0] === objective[0] && coord[1] === objective[1]) {
+          logEntry = makeLog(`Objective secured [${coord[0]},${coord[1]}]`);
+
+          setPlayers(prev =>
+            prev.map(p =>
+              p.id === activePlayer.id ? { ...p, position: [...objective] } : p
+            )
+          );
+
+          const { objective: newObjective } = startGameRandomizer(players);
+          setObjective(newObjective);
+
+          found = true;
+          break;
+        }
+
         setPlayers(prev =>
           prev.map(p =>
             p.id === activePlayer.id ? { ...p, position: coord } : p
           )
         );
-        logEntry = `${activePlayer.character.name} moved to (${coord[0]}, ${coord[1]})`;
-        found = true;
-        break;
-      }
-    } else if (action === "view") {
-      const foundPlayer = players.find(
-        p => p.position?.[0] === coord[0] && p.position?.[1] === coord[1]
-      );
 
-      if (objective && coord[0] === objective[0] && coord[1] === objective[1]) {
-        logEntry = `${activePlayer.character.name} → Objective spotted at (${coord[0]}, ${coord[1]})`;
+        logEntry = makeLog(`I'm moving out [${coord[0]},${coord[1]}]`);
         found = true;
         break;
-      } else if (foundPlayer) {
-        if (foundPlayer.team === activePlayer.team) {
-          logEntry = `${activePlayer.character.name} → You're clear ${foundPlayer.character?.name ?? foundPlayer.id}`;
-        } else {
-          logEntry = `${activePlayer.character.name} → Enemy spotted at (${coord[0]}, ${coord[1]})`;
+
+      } else if (action === "view") {
+        const foundPlayer = players.find(
+          p => p.position?.[0] === coord[0] && p.position?.[1] === coord[1]
+        );
+
+        if (objective && coord[0] === objective[0] && coord[1] === objective[1]) {
+          logEntry = makeLog(`Objective spotted at [${coord[0]},${coord[1]}]`);
+          found = true;
+          break;
         }
-        found = true;
-        break;
+
+        if (foundPlayer) {
+          logEntry = makeLog(
+            foundPlayer.team === activePlayer.team
+              ? `You're all clear ${foundPlayer.character?.name ?? foundPlayer.id} [${coord[0]},${coord[1]}]`
+              : `Enemy spotted at [${coord[0]},${coord[1]}]`
+          );
+          found = true;
+          break;
+        }
       }
     }
-  }
 
-  if (!found) {
-    // report nothing after 5 unsuccessful tries
-    if (action === "move") {
-      logEntry = `${activePlayer.character.name} → Could not move after searching 5 locations.`;
-    } else {
-      logEntry = `${activePlayer.character.name} → Nothing found after scanning 5 locations.`;
+    if (!found) {
+      logEntry = makeLog(
+        action === "move"
+          ? `I'm moving out (no viable tiles)`
+          : `I got nothing`
+      );
     }
-  }
 
-  setLog(prev => [...prev, logEntry]);
+    // 🔥 JSX added to log
+    setLog(prev => [...prev, logEntry]);
 
-  // move to next player
-  setCurrentTurnIndex(prev => prev + 1);
-};
-
+    setCurrentTurnIndex(prev => prev + 1);
+  };
 
   return (
     <div className="flex flex-col items-center p-6 text-white bg-gray-900 min-h-screen">
@@ -149,7 +185,8 @@ const handleAction = () => {
 
       <button
         onClick={() => {
-          const { players: newPlayers, objective: obj } = startGameRandomizer(players);
+          const { players: newPlayers, objective: obj } =
+            startGameRandomizer(players);
           setPlayers(newPlayers);
           setObjective(obj);
         }}
@@ -165,10 +202,13 @@ const handleAction = () => {
         ACTION → Next Turn
       </button>
 
-      <TurnOrderDisplay turnOrder={turnOrder} currentTurnIndex={currentTurnIndex} />
+      <TurnOrderDisplay
+        turnOrder={turnOrder}
+        currentTurnIndex={currentTurnIndex}
+      />
       <BoardDisplay players={players} objective={objective} />
 
-      {/* Log display */}
+      {/* 🔥 Logs now show images */}
       <div className="mt-6 w-full max-w-xl bg-gray-800 p-4 rounded-lg overflow-y-auto h-64">
         <h2 className="text-lg font-bold text-white mb-2">Action Log</h2>
         <div className="text-sm text-gray-200 space-y-1">

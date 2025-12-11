@@ -27,3 +27,5 @@ export type CharacterData = {
   portrait: string;
   icon: string;
 };
+
+export type PlayerWithSpeed = Player & { uniqueRandom: number; final_speed: number };
