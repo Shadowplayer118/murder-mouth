@@ -1,6 +1,6 @@
 import React from "react";
 import { TeamMember } from "./TeamContainer";
-import TeamManager from "./TeamManager";
+// import TeamManager from "./TeamManager";
 import TurnOrder, { PlayerTurn } from "./TurnOrder";
 
 type PiecesMap = Record<string, React.ReactNode>;
@@ -96,7 +96,7 @@ export default function Chessboard({ squareSize = 64, pieces = {}, whiteOnBottom
     <div key={layoutKey} className="flex flex-col items-center w-full">
       <ObjectiveContainer square={objectiveSquare} onRegenerate={regenerate} />
 
-      <TeamManager
+      {/* <TeamManager
         characters={characters}
         teamACoords={teamACoords}
         teamBCoords={teamBCoords}
@@ -104,7 +104,7 @@ export default function Chessboard({ squareSize = 64, pieces = {}, whiteOnBottom
         setTeamAMembers={setTeamAMembers}
         teamBMembers={teamBMembers}
         setTeamBMembers={setTeamBMembers}
-      />
+      /> */}
 
       {/* Turn Order Component */}
       <TurnOrder
