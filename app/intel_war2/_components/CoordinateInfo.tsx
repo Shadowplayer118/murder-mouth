@@ -152,7 +152,7 @@ const makeLog = (msg: string, playerTeam: "X" | "Y" = activePlayer.team): JSX.El
         if (foundPlayer) {
           logEntry = makeLog(
             foundPlayer.team === activePlayer.team
-              ? `You're all clear ${foundPlayer.character?.name ?? foundPlayer.id} [${coord[0]},${coord[1]}]`
+              ? `I got your ${foundPlayer.character?.name ?? foundPlayer.id} [${coord[0]},${coord[1]}]`
               : `Enemy spotted at [${coord[0]},${coord[1]}]`
           );
           found = true;

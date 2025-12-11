@@ -3,6 +3,7 @@ export type Player = {
   team: "X" | "Y";
   position?: [number, number];
   character?: CharacterData | null;
+  
 };
 
 export type CharacterData = {
